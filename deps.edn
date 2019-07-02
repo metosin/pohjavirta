@@ -1,0 +1,13 @@
+{:paths ["src" "resources" "target"]
+ :aliases {:test {:extra-paths ["test"]
+                  :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-418"}}}
+           :perf {:extra-paths ["perf"]
+                  :extra-deps {criterium {:mvn/version "0.4.4"}
+                               funcool/promesa {:mvn/version "2.0.0"}
+                               ;ikitommi/immutant-web {:mvn/version "3.0.0-alpha1"}
+                               com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.4.0"}}
+                  :jvm-opts ["-server"
+                             "-Xmx4096m"
+                             "-Dclojure.compiler.direct-linking=true"]}}
+ :deps {org.clojure/clojure {:mvn/version "1.10.1"}
+        io.undertow/undertow-core {:mvn/version "2.0.22.Final"}}}
