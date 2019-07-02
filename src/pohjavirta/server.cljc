@@ -4,6 +4,7 @@
   (:import (io.undertow Undertow UndertowOptions)
            (io.undertow.server HttpHandler HttpServerExchange)
            (io.undertow.util Headers HeaderMap HeaderValues HttpString SameThreadExecutor)
+           (io.undertow.server.handlers SetHeaderHandler)
            (java.nio ByteBuffer)
            (java.util.concurrent CompletableFuture)
            (java.util Iterator Map$Entry)
@@ -141,7 +142,14 @@
    ;; server-options, socket-options, worker-options
    ;; :dispatch?, virtual-host, virtual-host
    ;; ::ssl-port :keystore, :key-password, :truststore :trust-password, :ssl-context, :key-managers, :trust-managers, :client-auth, :http2?
-   (let [{:keys [port host buffer-size io-threads worker-threads direct-buffers]} (merge default-options options)]
+   (let [{:keys [port host buffer-size io-threads worker-threads direct-buffers]} (merge default-options options)
+         handler (if (instance? HttpHandler handler)
+                   handler
+                   (reify HttpHandler
+                     (handleRequest [_ exchange]
+                       (let [request (->ZeroCopyRequest exchange)
+                             response (handler request)]
+                         (-send-response response exchange)))))]
      (-> (Undertow/builder)
          (.addHttpListener port host)
          (cond-> buffer-size (.setBufferSize buffer-size))
@@ -149,13 +157,7 @@
          (cond-> worker-threads (.setWorkerThreads worker-threads))
          (cond-> direct-buffers (.setDirectBuffers direct-buffers))
          (.setServerOption UndertowOptions/ALWAYS_SET_KEEP_ALIVE, false)
-         (.setHandler (if (instance? HttpHandler handler)
-                        handler
-                        (reify HttpHandler
-                          (handleRequest [_ exchange]
-                            (let [request (->ZeroCopyRequest exchange)
-                                  response (handler request)]
-                              (-send-response response exchange))))))
+         (.setHandler (SetHeaderHandler. ^HttpHandler handler "Server" "pohjavirta"))
          (.build)))))
 
 (defn start [^Undertow server]

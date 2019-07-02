@@ -34,6 +34,15 @@
     (future (.complete f (server/->SimpleResponse 200 "text/plain" "Hello, World!")))
     f))
 
+(require '[promesa.core :as p])
+
+(defn handler [_]
+  (-> (p/promise "Hello, Async!")
+      (p/then (fn [message]
+                {:status 200,
+                 :headers {"Content-Type" "text/plain"}
+                 :body message}))))
+
 (comment
   (def server (server/create #'handler))
   (def server (server/create http-handler))

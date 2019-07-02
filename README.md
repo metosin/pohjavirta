@@ -25,6 +25,7 @@ HTTP/1.1 200 OK
 Content-Length: 13
 Content-Type: text/plain
 Date: Tue, 02 Jul 2019 13:21:59 GMT
+Server: pohjavirta
 
 Hello, World!
 ```
@@ -32,17 +33,17 @@ Hello, World!
 Let's run some load with [wrk](https://github.com/wg/wrk):
 
 ```bash
-$ wrk -t20 -c20 -d2s http://127.0.0.1:8080
+$ wrk -t16 -c16 -d2s http://127.0.0.1:8080
 
 Running 2s test @ http://127.0.0.1:8080
-  20 threads and 20 connections
+  16 threads and 16 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency   159.77us   61.65us   2.51ms   96.65%
-    Req/Sec     6.24k   402.70     6.81k    75.24%
-  260801 requests in 2.10s, 28.60MB read
-  
-Requests/sec: 124217.27
-Transfer/sec:     13.62MB
+    Latency   125.96us   37.69us   1.61ms   94.95%
+    Req/Sec     7.82k   530.24     8.55k    83.63%
+  261483 requests in 2.10s, 32.42MB read
+
+Requests/sec: 124548.75
+Transfer/sec:     15.44MB
 ```
 
 Async responses, using [promesa](http://funcool.github.io/promesa/latest/):
@@ -51,7 +52,7 @@ Async responses, using [promesa](http://funcool.github.io/promesa/latest/):
 (require '[promesa.core :as p])
 
 (defn handler [_]
-  (-> (p/promise "Hello, World, Async!")
+  (-> (p/promise "Hello, Async!")
       (p/then (fn [message]
                 {:status 200,
                  :headers {"Content-Type" "text/plain"}
@@ -67,6 +68,7 @@ HTTP/1.1 200 OK
 Content-Length: 13
 Content-Type: text/plain
 Date: Tue, 02 Jul 2019 13:27:35 GMT
+Server: pohjavirta
 
 Hello, Async!
 ```
@@ -74,17 +76,17 @@ Hello, Async!
 Performance is still good:
 
 ```bash
-$ wrk -t20 -c20 -d2s http://127.0.0.1:8080
+$ wrk -t16 -c16 -d2s http://127.0.0.1:8080
 
 Running 2s test @ http://127.0.0.1:8080
-  20 threads and 20 connections
+  16 threads and 16 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency   178.01us   59.69us   2.08ms   97.26%
-    Req/Sec     5.60k   301.96     6.34k    73.57%
-  233921 requests in 2.10s, 25.65MB read
+    Latency   144.56us   50.60us   1.86ms   96.96%
+    Req/Sec     6.86k   329.73     7.34k    76.79%
+  229225 requests in 2.10s, 29.51MB read
 
-Requests/sec: 111398.27
-Transfer/sec:     12.22MB
+Requests/sec: 109145.61
+Transfer/sec:     14.05MB
 ```
 
 ## Status
