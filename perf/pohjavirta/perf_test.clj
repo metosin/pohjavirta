@@ -72,37 +72,37 @@
         r (server/->ZeroCopyRequest ex)]
 
     ;; 70ns
-    (b! (ring/server-port r))
+    (b! (ring/get-server-port r))
 
     ;; 28ns
-    (b! (ring/server-name r))
+    (b! (ring/get-server-name r))
 
     ;; 83ns
-    (b! (ring/remote-addr r))
+    (b! (ring/get-remote-addr r))
 
     ;; 7ns
-    (b! (ring/uri r))
+    (b! (ring/get-uri r))
 
     ;; 29ns
-    (b! (ring/query-string r))
+    (b! (ring/get-query-string r))
 
     ;; 19ns
-    (b! (ring/scheme r))
+    (b! (ring/get-scheme r))
 
     ;; 63ns -> 17ns
-    (b! (ring/request-method r))
+    (b! (ring/get-request-method r))
 
     ;; 8ns
-    (b! (ring/protocol r))
+    (b! (ring/get-protocol r))
 
     ;; 2000ns -> 500ns -> 430ns
-    (b! (ring/headers r))
+    (b! (ring/get-headers r))
 
     ;; 8ns
-    (b! (ring/body r))
+    (b! (ring/get-body r))
 
     ;; 8ns
-    (b! (ring/context r))))
+    (b! (ring/get-context r))))
 
 (comment
   (response-pef)

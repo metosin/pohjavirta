@@ -67,17 +67,18 @@
 
 (extend-protocol ring/RingRequest
   ZeroCopyRequest
-  (server-port [this] (-> this exchange .getDestinationAddress .getPort))
-  (server-name [this] (-> this exchange .getHostName))
-  (remote-addr [this] (-> this exchange .getSourceAddress .getAddress .getHostAddress))
-  (uri [this] (let [e ^HttpServerExchange (.exchange this)] (-> e .getRequestURI)))
-  (query-string [this] (let [qs (-> this exchange .getQueryString)] (if-not (= "" qs) qs)))
-  (scheme [this] (-> this exchange .getRequestScheme keyword))
-  (request-method [this] (->> this exchange .getRequestMethod ->method))
-  (protocol [this] (-> this exchange .getProtocol .toString))
-  (headers [this] (-> this exchange .getRequestHeaders ->headers))
-  (body [this] (if (-> this exchange .isBlocking) (-> this exchange .getInputStream)))
-  (context [this] (-> this exchange .getResolvedPath)))
+  (get-server-port [this] (-> this exchange .getDestinationAddress .getPort))
+  (get-server-name [this] (-> this exchange .getHostName))
+  (get-remote-addr [this] (-> this exchange .getSourceAddress .getAddress .getHostAddress))
+  (get-uri [this] (let [e ^HttpServerExchange (.exchange this)] (-> e .getRequestURI)))
+  (get-query-string [this] (let [qs (-> this exchange .getQueryString)] (if-not (= "" qs) qs)))
+  (get-scheme [this] (-> this exchange .getRequestScheme keyword))
+  (get-request-method [this] (->> this exchange .getRequestMethod ->method))
+  (get-protocol [this] (-> this exchange .getProtocol .toString))
+  (get-headers [this] (-> this exchange .getRequestHeaders ->headers))
+  (get-header [this header] (-> this exchange .getRequestHeaders (.get ^String header)))
+  (get-body [this] (if (-> this exchange .isBlocking) (-> this exchange .getInputStream)))
+  (get-context [this] (-> this exchange .getResolvedPath)))
 
 (defmethod print-method ZeroCopyRequest [request ^java.io.Writer w]
   (let [exchange ^HttpServerExchange (:echange request)
