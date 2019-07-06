@@ -1,8 +1,10 @@
 (ns pohjavirta.perf-test
   (:require [criterium.core :as cc]
-            [pohjavirta.server :as server])
+            [pohjavirta.server :as server]
+            [pohjavirta.ring :as ring])
   (:import (io.undertow.util HttpString)
-           (java.util Iterator Map$Entry)))
+           (java.util Iterator Map$Entry)
+           (io.undertow.server HttpServerExchange)))
 
 (defn response-pef []
 
@@ -57,6 +59,50 @@
           m)
         m
         headers))))
+
+(declare EXC)
+
+(defmacro b! [& body]
+  `(do
+     (println ~@body)
+     (cc/quick-bench ~@body)))
+
+(defn request-mapping-test []
+  (let [ex ^HttpServerExchange EXC
+        r (server/->ZeroCopyRequest ex)]
+
+    ;; 70ns
+    (b! (ring/server-port r))
+
+    ;; 28ns
+    (b! (ring/server-name r))
+
+    ;; 83ns
+    (b! (ring/remote-addr r))
+
+    ;; 7ns
+    (b! (ring/uri r))
+
+    ;; 29ns
+    (b! (ring/query-string r))
+
+    ;; 19ns
+    (b! (ring/scheme r))
+
+    ;; 63ns -> 17ns
+    (b! (ring/request-method r))
+
+    ;; 8ns
+    (b! (ring/protocol r))
+
+    ;; 2000ns -> 500ns -> 430ns
+    (b! (ring/headers r))
+
+    ;; 8ns
+    (b! (ring/body r))
+
+    ;; 8ns
+    (b! (ring/context r))))
 
 (comment
   (response-pef)

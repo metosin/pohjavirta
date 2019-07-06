@@ -1,0 +1,15 @@
+(ns pohjavirta.ring)
+
+(defprotocol RingRequest
+  (server-port [this])
+  (server-name [this])
+  (remote-addr [this])
+  (uri [this])
+  (query-string [this])
+  (scheme [this])
+  (request-method [this])
+  (protocol [this])
+  (headers [this])
+  (header [this header])
+  (body [this])
+  (context [this]))
