@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [pohjavirta.server :as server]
             [pohjavirta.response :as response]
+            [pohjavirta.async :as a]
             [hikari-cp.core :as hikari])
   (:import (java.nio ByteBuffer)
            (java.util.concurrent CompletableFuture)
@@ -100,29 +101,12 @@
                                    :headers {"Content-Type" "application/json"}
                                    :body (j/write-value-as-bytes world)}))))))))
 
-(defn promize
-  ([]
-   (CompletableFuture.))
-  ([x]
-   (let [cf (CompletableFuture.)]
-     (.complete cf x)
-     cf)))
-
-(defn complete [^CompletableFuture cf x]
-  (.complete cf x)
-  cf)
-
-(defn then [^CompletableFuture cf f]
-  (.thenApply cf (reify Function
-                   (apply [_ response]
-                     (f response)))))
-
 (defn handler [_]
-  (-> (promize "Hello, Async*")
-      (then (fn [response]
-              {:status 200,
-               :headers {"Content-Type" "text/plain"}
-               :body response}))))
+  (-> (a/promise "Hello, Async?")
+      (a/then (fn [response]
+                {:status 200,
+                 :headers {"Content-Type" "text/plain"}
+                 :body response}))))
 
 (defn handler [_]
   (let [cf (CompletableFuture.)]
@@ -142,20 +126,18 @@
 
 (defn handler [_]
   (-> (pa/query-one mapper pool ["SELECT id, randomnumber from WORLD where id=$1" (random)])
-      (p/then (fn [world]
-                {:status 200
-                 :headers {"Content-Type" "application/json"}
-                 :body (j/write-value-as-bytes world)}))))
-
-(defn handler [_]
-  (-> (pa/query-one mapper pool ["SELECT id, randomnumber from WORLD where id=$1" (random)])
       (.thenApply (reify Function
                     (apply [_ world]
                       {:status 200
                        :headers {"Content-Type" "application/json"}
                        :body (j/write-value-as-bytes world)})))))
 
-
+(defn handler [_]
+  (-> (pa/query-one mapper pool ["SELECT id, randomnumber from WORLD where id=$1" (random)])
+      (a/then (fn [world]
+                {:status 200
+                 :headers {"Content-Type" "application/json"}
+                 :body (j/write-value-as-bytes world)}))))
 
 (require '[porsas.async.cps :as cps])
 
