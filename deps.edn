@@ -1,6 +1,17 @@
 {:paths ["src" "resources" "target"]
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-418"}}}
+           :jar {:extra-deps {pack/pack.alpha
+                              {:git/url "https://github.com/juxt/pack.alpha.git"
+                               :sha "2769a6224bfb938e777906ea311b3daf7d2220f5"}}
+                 :main-opts ["-m" "mach.pack.alpha.skinny" "--no-libs"
+                             "--project-path" "pohjavirta.jar"]}
+           :deploy {:extra-deps {deps-deploy {:mvn/version "RELEASE"}}
+                    :main-opts ["-m" "deps-deploy.deps-deploy" "deploy"
+                                "pohjavirta.jar"]}
+           :install {:extra-deps {deps-deploy {:mvn/version "RELEASE"}}
+                     :main-opts ["-m" "deps-deploy.deps-deploy" "install"
+                                 "pohjavirta.jar"]}
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium {:mvn/version "0.4.4"}
                                funcool/promesa {:mvn/version "2.0.0"}
