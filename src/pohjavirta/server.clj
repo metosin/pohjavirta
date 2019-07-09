@@ -67,18 +67,18 @@
   ([mode handler]
    (let [{:keys [status headers body]} (handler ::irrelevant)
          exchange (gensym)
-         request-sym (gensym)
+         headers-sym (gensym)
          body-sym (gensym)
          lets (atom [])
          code (cond-> []
                       (not (#{200 nil} status)) (conj `(.setStatusCode ~exchange ~status))
                       (seq headers) (conj
-                                      `(let [~request-sym (.getRequestHeaders ~exchange)]
+                                      `(let [~headers-sym (.getResponseHeaders ~exchange)]
                                          ~@(mapv
                                              (fn [[k v]]
                                                (let [k' (gensym)]
                                                  (swap! lets conj `[~k' (HttpString/tryFromString ~k)])
-                                                 `(.put ~request-sym ~k' ~v))) headers)))
+                                                 `(.put ~headers-sym ~k' ~v))) headers)))
                       body (conj (do
                                    (swap! lets conj `[~body-sym (response/direct-byte-buffer ~body)])
                                    `(.send (.getResponseSender ~exchange) (.duplicate ~body-sym)))))]
