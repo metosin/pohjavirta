@@ -1,6 +1,6 @@
 # pohjavirta
 
-Fast & Non-blocking Clojure wrapper for the [UnderTow](http://undertow.io/) Web Server.
+Fast & Non-blocking Clojure wrapper for [Undertow](http://undertow.io/).
 
 ## Latest version
 
