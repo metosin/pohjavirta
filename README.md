@@ -1,8 +1,12 @@
 # pohjavirta
 
-Fast, low-fat & Non-blocking Clojure wrapper for the [UnderTow](http://undertow.io/) Web Server.
+Fast & Non-blocking Clojure wrapper for the [UnderTow](http://undertow.io/) Web Server.
 
-## 
+## Latest version
+
+[![Clojars Project](http://clojars.org/metosin/pohjavirta/latest-version.svg)](http://clojars.org/metosin/pohjavirta)
+
+## Usage
 
 ```clj
 (require '[pohjavirta.server :as server])
@@ -91,7 +95,7 @@ Transfer/sec:     14.05MB
 
 ## Status
 
-WIP. 
+WIP. See [issues](https://github.com/metosin/pohjavirta/issues) for Roadmap.
 
 ## License
 
