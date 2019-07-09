@@ -36,6 +36,7 @@
          (cond-> worker-threads (.setWorkerThreads worker-threads))
          (cond-> direct-buffers (.setDirectBuffers direct-buffers))
          (.setServerOption UndertowOptions/ALWAYS_SET_KEEP_ALIVE, false)
+         (.setServerOption UndertowOptions/BUFFER_PIPELINED_DATA, true)
          (.setHandler (SetHeaderHandler. ^HttpHandler handler "Server" "pohjavirta"))
          (.build)))))
 
