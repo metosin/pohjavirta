@@ -1,9 +1,11 @@
 (ns pohjavirta.server
+  (:refer-clojure :exclude [constantly])
   (:require [pohjavirta.request :as request]
             [pohjavirta.response :as response])
   (:import (io.undertow Undertow UndertowOptions)
-           (io.undertow.server HttpHandler)
-           (io.undertow.server.handlers SetHeaderHandler)))
+           (io.undertow.server HttpHandler HttpServerExchange)
+           (io.undertow.server.handlers SetHeaderHandler)
+           (io.undertow.util HttpString)))
 
 (set! *warn-on-reflection* true)
 
@@ -19,13 +21,14 @@
    ;; :dispatch?, virtual-host, virtual-host
    ;; ::ssl-port :keystore, :key-password, :truststore :trust-password, :ssl-context, :key-managers, :trust-managers, :client-auth, :http2?
    (let [{:keys [port host buffer-size io-threads worker-threads direct-buffers]} (merge default-options options)
-         handler (if (instance? HttpHandler handler)
-                   handler
-                   (reify HttpHandler
-                     (handleRequest [_ exchange]
-                       (let [request (request/create exchange)
-                             response (handler request)]
-                         (response/send-response response exchange)))))]
+         handler (cond
+                   (instance? HttpHandler handler) handler
+                   (and (var? handler) (instance? HttpHandler @handler)) @handler
+                   :else (reify HttpHandler
+                           (handleRequest [_ exchange]
+                             (let [request (request/create exchange)
+                                   response (handler request)]
+                               (response/send-response response exchange)))))]
      (-> (Undertow/builder)
          (.addHttpListener port host)
          (cond-> buffer-size (.setBufferSize buffer-size))
@@ -41,3 +44,53 @@
 
 (defn stop [^Undertow server]
   (.stop server))
+
+;;
+;; helpers
+;;
+
+(defn dispatch [handler]
+  (fn [request]
+    (let [exchange ^HttpServerExchange (request/exchange request)]
+      (if (.isInIoThread exchange)
+        (.dispatch
+          exchange
+          ^Runnable
+          (^:once fn* []
+            (response/send-response (handler request) exchange)
+            (.endExchange exchange)))
+        (handler request)))))
+
+(defn constantly
+  ([handler]
+   (constantly :ring handler))
+  ([mode handler]
+   (let [{:keys [status headers body]} (handler ::irrelevant)
+         exchange (gensym)
+         request-sym (gensym)
+         body-sym (gensym)
+         lets (atom [])
+         code (cond-> []
+                      (not (#{200 nil} status)) (conj `(.setStatusCode ~exchange ~status))
+                      (seq headers) (conj
+                                      `(let [~request-sym (.getRequestHeaders ~exchange)]
+                                         ~@(mapv
+                                             (fn [[k v]]
+                                               (let [k' (gensym)]
+                                                 (swap! lets conj `[~k' (HttpString/tryFromString ~k)])
+                                                 `(.put ~request-sym ~k' ~v))) headers)))
+                      body (conj (do
+                                   (swap! lets conj `[~body-sym (response/direct-byte-buffer ~body)])
+                                   `(.send (.getResponseSender ~exchange) (.duplicate ~body-sym)))))]
+     (eval
+       (case mode
+         :raw `(let [~@(apply concat @lets)]
+                 (reify HttpHandler
+                   (handleRequest [_ ~exchange]
+                     ~@(if (seq code) code))))
+         :ring `(let [~@(apply concat @lets)]
+                  (fn [~'_]
+                    ~@(if (seq code)
+                        `[(response/->ExchangeResponse
+                            (fn [~(with-meta exchange {:tag 'io.undertow.server.HttpServerExchange})]
+                              ~@code))]))))))))

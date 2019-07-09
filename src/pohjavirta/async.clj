@@ -29,3 +29,8 @@
    (.thenApplyAsync cf (reify Function
                          (apply [_ response]
                            (f response))) executor)))
+
+(defn catch [^CompletableFuture cf f]
+  (.exceptionally cf (reify Function
+                       (apply [_ exception]
+                         (f exception)))))

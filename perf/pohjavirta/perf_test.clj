@@ -1,7 +1,9 @@
 (ns pohjavirta.perf-test
   (:require [criterium.core :as cc]
             [pohjavirta.server :as server]
-            [pohjavirta.ring :as ring])
+            [pohjavirta.response :as response]
+            [pohjavirta.ring :as ring]
+            [pohjavirta.request :as request])
   (:import (io.undertow.util HttpString)
            (java.util Iterator Map$Entry)
            (io.undertow.server HttpServerExchange)))
@@ -10,12 +12,12 @@
 
   ;; 9ns
   (cc/quick-bench
-    (let [r (server/->Response 200 {"Content-Type" "text/plain"} "hello world 2.0")]
+    (let [r (response/->Response 200 {"Content-Type" "text/plain"} "hello world 2.0")]
       [(:status r) (:headers r) (:body r)]))
 
   ;; 11ns
-  (cc/quick-bench
-    (let [r (server/->SimpleResponse 200 "text/plain" "hello world 2.0")]
+  #_(cc/quick-bench
+    (let [r (response/->SimpleResponse 200 "text/plain" "hello world 2.0")]
       [(:status r) (:headers r) (:body r)]))
 
   ;; 20ns
@@ -69,7 +71,7 @@
 
 (defn request-mapping-test []
   (let [ex ^HttpServerExchange EXC
-        r (server/->ZeroCopyRequest ex)]
+        r (request/create ex)]
 
     ;; 70ns
     (b! (ring/get-server-port r))

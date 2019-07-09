@@ -1,6 +1,6 @@
 (ns pohjavirta.response
   (:import (io.undertow.server HttpServerExchange)
-           (io.undertow.util Headers HeaderMap HttpString SameThreadExecutor)
+           (io.undertow.util HeaderMap HttpString SameThreadExecutor)
            (java.nio ByteBuffer)
            (java.util.concurrent CompletableFuture)
            (java.util Iterator Map$Entry)
@@ -8,9 +8,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defrecord Response [status -headers body])
+(defrecord Response [status headers body])
 
-(defrecord SimpleResponse [status content-type body])
+(defrecord ExchangeResponse [callback])
 
 (defprotocol ResponseSender
   (send-response [this exchange]))
@@ -18,12 +18,19 @@
 (defprotocol BodySender
   (send-body [this exchange]))
 
+(defn ^:no-doc ^ByteBuffer direct-byte-buffer [x]
+  (cond
+    (string? x) (recur (.getBytes ^String x "UTF-8"))
+    (bytes? x) (.flip (.put (ByteBuffer/allocateDirect (alength ^bytes x)) ^bytes x))
+    (instance? ByteBuffer x) x
+    :else (throw (UnsupportedOperationException. (str "invalid type " (class x) ": " x)))))
+
 (defn- -send-map-like-response [response ^HttpServerExchange exchange]
   (when-let [status (:status response)]
     (.setStatusCode ^HttpServerExchange exchange status))
-  (when-let [-headers (:headers response)]
+  (when-let [headers (:headers response)]
     (let [responseHeaders ^HeaderMap (.getResponseHeaders exchange)
-          i ^Iterator (.iterator ^Iterable -headers)]
+          i ^Iterator (.iterator ^Iterable headers)]
       (loop []
         (if (.hasNext i)
           (let [e ^Map$Entry (.next i)]
@@ -33,19 +40,19 @@
 
 (extend-protocol ResponseSender
 
+  HttpServerExchange
+  (send-response [_ _])
+
   CompletableFuture
   (send-response [response exchange]
-    ;(println "1:" (Thread/currentThread))
     (.dispatch
       ^HttpServerExchange exchange
       SameThreadExecutor/INSTANCE
       ^Runnable (^:once fn* []
-                  ;(println "2:" (Thread/currentThread))
                   (.thenApply
                     response
                     ^Function (reify Function
                                 (apply [_ response]
-                                  ;(println "3:" (Thread/currentThread))
                                   (send-response response exchange)
                                   (.endExchange ^HttpServerExchange exchange)))))))
 
@@ -61,20 +68,13 @@
   (send-response [response exchange]
     (-send-map-like-response response exchange))
 
-  SimpleResponse
+  ExchangeResponse
   (send-response [response exchange]
-    (def EXC exchange)
-    (when-let [status (:status response)]
-      (.setStatusCode ^HttpServerExchange exchange status))
-    (when-let [content-type (:content-type response)]
-      (-> ^HttpServerExchange exchange
-          (.getResponseHeaders)
-          (.put Headers/CONTENT_TYPE ^String content-type)))
-    (send-body (:body response) exchange))
+    ((.callback response) exchange))
 
-  Object
-  (send-response [response _]
-    (throw (UnsupportedOperationException. (str "Response class not supported: " (class response))))))
+  nil
+  (send-response [_ exchange]
+    (.endExchange ^HttpServerExchange exchange)))
 
 (extend-protocol BodySender
 

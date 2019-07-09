@@ -1,6 +1,7 @@
 {:paths ["src" "resources" "target"]
  :aliases {:test {:extra-paths ["test"]
-                  :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-418"}}}
+                  :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-418"}
+                               org.clojure/clojure {:mvn/version "1.10.1"}}}
            :jar {:extra-deps {pack/pack.alpha
                               {:git/url "https://github.com/juxt/pack.alpha.git"
                                :sha "2769a6224bfb938e777906ea311b3daf7d2220f5"}}
@@ -18,7 +19,6 @@
                                metosin/porsas {:mvn/version "0.0.1-alpha11"}
                                metosin/jsonista {:mvn/version "0.2.3"}
                                hikari-cp {:mvn/version "2.7.1"}
-                               ;ikitommi/immutant-web {:mvn/version "3.0.0-alpha1"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.4.0"}}
                   :jvm-opts ["-server"
                              "-Xms2G"
@@ -31,5 +31,4 @@
                              "-Dvertx.disableContextTimings=true"
                              "-Dvertx.disableTCCL=true"
                              "-Dclojure.compiler.direct-linking=true"]}}
- :deps {org.clojure/clojure {:mvn/version "1.10.1"}
-        io.undertow/undertow-core {:mvn/version "2.0.22.Final"}}}
+ :deps {io.undertow/undertow-core {:mvn/version "2.0.22.Final"}}}
