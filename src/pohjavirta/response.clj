@@ -43,7 +43,7 @@
   HttpServerExchange
   (send-response [_ _])
 
-  CompletableFuture
+  CompletionStage
   (send-response [response exchange]
     (.dispatch
       ^HttpServerExchange exchange
