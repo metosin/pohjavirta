@@ -5,7 +5,8 @@
   (:import (io.undertow Undertow UndertowOptions)
            (io.undertow.server HttpHandler HttpServerExchange)
            (io.undertow.server.handlers SetHeaderHandler)
-           (io.undertow.util HttpString)))
+           (io.undertow.util HttpString)
+           (pohjavirta.response ResponseSender)))
 
 (set! *warn-on-reflection* true)
 
@@ -68,6 +69,7 @@
   ([mode handler]
    (let [{:keys [status headers body]} (handler ::irrelevant)
          exchange (gensym)
+         exchange' (gensym)
          headers-sym (gensym)
          body-sym (gensym)
          lets (atom [])
@@ -92,6 +94,8 @@
          :ring `(let [~@(apply concat @lets)]
                   (fn [~'_]
                     ~@(if (seq code)
-                        `[(response/->ExchangeResponse
-                            (fn [~(with-meta exchange {:tag 'io.undertow.server.HttpServerExchange})]
-                              ~@code))]))))))))
+                        `[(reify ResponseSender
+                            ;; protocols don't support type hints
+                            (send-response [_ ~exchange']
+                              (let [~exchange ~(with-meta exchange' {:tag 'io.undertow.server.HttpServerExchange})]
+                                ~@code)))]))))))))

@@ -2,15 +2,13 @@
   (:import (io.undertow.server HttpServerExchange)
            (io.undertow.util HeaderMap HttpString SameThreadExecutor)
            (java.nio ByteBuffer)
-           (java.util.concurrent CompletableFuture)
+           (java.util.concurrent CompletionStage)
            (java.util Iterator Map$Entry)
            (java.util.function Function)))
 
 (set! *warn-on-reflection* true)
 
 (defrecord Response [status headers body])
-
-(defrecord ExchangeResponse [callback])
 
 (defprotocol ResponseSender
   (send-response [this exchange]))
@@ -67,10 +65,6 @@
   Response
   (send-response [response exchange]
     (-send-map-like-response response exchange))
-
-  ExchangeResponse
-  (send-response [response exchange]
-    ((.callback response) exchange))
 
   nil
   (send-response [_ exchange]
