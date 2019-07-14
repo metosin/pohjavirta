@@ -81,7 +81,7 @@
   (get-context [this] (-> this exchange .getResolvedPath)))
 
 (defmethod print-method ZeroCopyRequest [request ^java.io.Writer w]
-  (let [exchange ^HttpServerExchange (:echange request)
+  (let [exchange ^HttpServerExchange (exchange request)
         data (if exchange {:xnio (.isInIoThread exchange)
                            :blocking (.isBlocking exchange)} {})]
     (.write w (str "#ZeroCopyRequest" data))))
