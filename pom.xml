@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>metosin</groupId>
   <artifactId>pohjavirta</artifactId>
-  <version>0.0.1-alpha3</version>
+  <version>0.0.1-alpha4</version>
   <name>pohjavirta</name>
   <dependencies>
     <dependency>

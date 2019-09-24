@@ -50,7 +50,7 @@
   :server-name (.getHostName exchange)
   :remote-addr (-> exchange .getSourceAddress .getAddress .getHostAddress)
   :uri (.getRequestURI exchange)
-  :query-string (let [qs (.getQueryString exchange)] (if-not (= "" qs) qs))
+  :query-string (let [qs (.getQueryString exchange)] (if-not (.equals "" qs) qs))
   :scheme (-> exchange .getRequestScheme keyword)
   :request-method (-> exchange .getRequestMethod .toString .toLowerCase keyword)
   :protocol (-> exchange .getProtocol .toString)

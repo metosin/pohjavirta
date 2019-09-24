@@ -1,7 +1,9 @@
 (ns pohjavirta.server-test
   (:require [clojure.test :refer :all]
+            [pohjavirta.util :as pu]
             [pohjavirta.server :as server]
             [pohjavirta.response :as response]
+            [pohjavirta.exchange :as exchange]
             [pohjavirta.async :as a]
             [hikari-cp.core :as hikari])
   (:import (java.nio ByteBuffer)
@@ -9,7 +11,8 @@
            (io.undertow.server HttpHandler HttpServerExchange)
            (io.undertow.util Headers)
            (java.util.concurrent ThreadLocalRandom)
-           (java.util.function Function)))
+           (java.util.function Function Supplier)
+           (clojure.lang IDeref)))
 
 (set! *warn-on-reflection* true)
 
@@ -50,24 +53,23 @@
     {:uri "postgresql://localhost:5432/hello_world"
      :user "benchmarkdbuser"
      :password "benchmarkdbpass"
-     :pipelining-limit 4
      :size (* 2 (.availableProcessors (Runtime/getRuntime)))}))
 
 (def async-mapper (pa/data-mapper {:row (pa/rs->compiled-record)}))
 
 (def jdbc-pool
   (hikari/make-datasource
-      {:jdbc-url "jdbc:postgresql://localhost:5432/hello_world"
-       :username "benchmarkdbuser"
-       :password "benchmarkdbpass"
-       :maximum-pool-size 256}))
+    {:jdbc-url "jdbc:postgresql://localhost:5432/hello_world"
+     :username "benchmarkdbuser"
+     :password "benchmarkdbpass"
+     :maximum-pool-size 256}))
 
 (def jdbc-mapper (ps/data-mapper {:row (ps/rs->compiled-record)}))
 
 (defn random []
   (unchecked-inc (.nextInt (ThreadLocalRandom/current) 10000)))
 
-(defn handler2 [_]
+(defn sync-db-handler [_]
   (let [world (with-open [con (ps/get-connection jdbc-pool)]
                 (ps/query-one jdbc-mapper con ["SELECT id, randomnumber from WORLD where id=?" (random)]))]
     {:status 200
@@ -95,12 +97,25 @@
       #_(.startBlocking exchange)
       (.dispatch
         ^HttpServerExchange exchange
+        ;SameThreadExecutor/INSTANCE
         ^Runnable (^:once fn* []
                     (-> (pa/query-one async-mapper async-pool ["SELECT id, randomnumber from WORLD where id=$1" (random)])
-                        (p/then (fn [world]
-                                  {:status 200
-                                   :headers {"Content-Type" "application/json"}
-                                   :body (j/write-value-as-bytes world)}))))))))
+                        (pa/then (fn [world]
+                                   {:status 200
+                                    :headers {"Content-Type" "application/json"}
+                                    :body (j/write-value-as-bytes world)}))))))))
+
+(def http-handler
+  (reify HttpHandler
+    (handleRequest [_ exchange]
+      (-> (pa/query-one async-mapper async-pool ["SELECT id, randomnumber from WORLD where id=$1" (random)])
+          (pa/then (fn [world]
+                     (response/send-response
+                       {:status 200
+                        :headers {"Content-Type" "application/json"}
+                        :body (j/write-value-as-bytes world)}
+                       exchange)
+                     (.endExchange ^HttpServerExchange exchange)))))))
 
 (defn handler [_]
   (-> (a/promise "Hello, Async?")
@@ -126,6 +141,13 @@
                  :body message}))))
 
 (defn handler [_]
+  (-> (a/promise "Hello, Async!")
+      (a/then (fn [message]
+                {:status 200,
+                 :headers {"Content-Type" "text/plain"}
+                 :body message}))))
+
+(defn handler2 [_]
   (-> (pa/query-one async-mapper async-pool ["SELECT id, randomnumber from WORLD where id=$1" (random)])
       (.thenApply (reify Function
                     (apply [_ world]
@@ -133,21 +155,40 @@
                        :headers {"Content-Type" "application/json"}
                        :body (j/write-value-as-bytes world)})))))
 
-(defn handler [_]
-  (-> (pa/query-one async-mapper async-pool ["SELECT id, randomnumber from WORLD where id=$1" (random)])
-      (a/then (fn [world]
-                {:status 200
-                 :headers {"Content-Type" "application/json"}
-                 :body (j/write-value-as-bytes world)}))))
+(defmacro thread-local [& body]
+  `(let [tl# (ThreadLocal/withInitial
+               (reify Supplier
+                 (get [_] ~@body)))]
+     (reify IDeref
+       (deref [_] (.get tl#)))))
 
-(def handler (server/dispatch handler2))
+(def async-pool-provider
+  (thread-local
+    (println "create in:" (Thread/currentThread))
+    (pa/pool
+      {:uri "postgresql://localhost:5432/hello_world"
+       :user "benchmarkdbuser"
+       :password "benchmarkdbpass"
+       :size 1})))
+
+(defn handler [_]
+  (-> (pa/query-one async-mapper @async-pool-provider #_async-pool ["SELECT id, randomnumber from WORLD where id=$1" (random)])
+      (pa/then (fn [world]
+                 {:status 200
+                  :headers {"Content-Type" "application/json"}
+                  :body (j/write-value-as-bytes world)}))
+      (pa/catch (fn [e]
+                  {:status 500
+                   :headers {"Content-Type" "text/plain"}
+                   :body (ex-message e)}))))
 
 (defn handler2 [_]
   {:status 200
    :headers {"Content-Type" "text/plain"}
    :body "hello World!"})
 
-(def handler (server/constantly handler2))
+(def handler (exchange/dispatch sync-db-handler))
+(def handler (exchange/constantly handler2))
 
 (comment
   (def server (server/create #'handler))
