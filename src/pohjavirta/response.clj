@@ -11,6 +11,7 @@
 (defrecord Response [status headers body])
 
 (defprotocol ResponseSender
+  (async? [this])
   (send-response [this exchange]))
 
 (defprotocol BodySender
@@ -39,9 +40,11 @@
 (extend-protocol ResponseSender
 
   HttpServerExchange
+  (async? [_] false)
   (send-response [_ _])
 
   CompletionStage
+  (async? [_] true)
   (send-response [response exchange]
     (.dispatch
       ^HttpServerExchange exchange
@@ -55,18 +58,22 @@
                                   (.endExchange ^HttpServerExchange exchange)))))))
 
   clojure.lang.PersistentArrayMap
+  (async? [_] false)
   (send-response [response exchange]
     (-send-map-like-response response exchange))
 
   clojure.lang.PersistentHashMap
+  (async? [_] false)
   (send-response [response exchange]
     (-send-map-like-response response exchange))
 
   Response
+  (async? [_] false)
   (send-response [response exchange]
     (-send-map-like-response response exchange))
 
   nil
+  (async? [_] false)
   (send-response [_ exchange]
     (.endExchange ^HttpServerExchange exchange)))
 

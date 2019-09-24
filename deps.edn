@@ -16,7 +16,8 @@
            :perf {:extra-paths ["perf"]
                   :extra-deps {criterium {:mvn/version "0.4.4"}
                                funcool/promesa {:mvn/version "2.0.0"}
-                               metosin/porsas {:mvn/version "0.0.1-alpha11"}
+                               metosin/reitit {:mvn/version "0.3.2"}
+                               metosin/porsas {:mvn/version "0.0.1-alpha12"}
                                metosin/jsonista {:mvn/version "0.2.3"}
                                hikari-cp {:mvn/version "2.7.1"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.4.0"}}
