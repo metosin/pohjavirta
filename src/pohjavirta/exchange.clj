@@ -28,14 +28,13 @@
   ([mode handler]
    (let [{:keys [status headers body]} (handler ::irrelevant)
          exchange (gensym)
-         exchange' (gensym)
          headers-sym (gensym)
          body-sym (gensym)
          lets (atom [])
          code (cond-> []
-                      (not (#{200 nil} status)) (conj `(.setStatusCode ~exchange ~status))
+                      (not (#{200 nil} status)) (conj `(.setStatusCode ~(with-meta exchange {:tag 'io.undertow.server.HttpServerExchange}) ~status))
                       (seq headers) (conj
-                                      `(let [~headers-sym (.getResponseHeaders ~exchange)]
+                                      `(let [~headers-sym (.getResponseHeaders ~(with-meta exchange {:tag 'io.undertow.server.HttpServerExchange}))]
                                          ~@(mapv
                                              (fn [[k v]]
                                                (let [k' (gensym)]
@@ -43,7 +42,7 @@
                                                  `(.put ~headers-sym ~k' ~v))) headers)))
                       body (conj (do
                                    (swap! lets conj `[~body-sym (response/direct-byte-buffer ~body)])
-                                   `(.send (.getResponseSender ~exchange) (.duplicate ~body-sym)))))]
+                                   `(.send (.getResponseSender ~(with-meta exchange {:tag 'io.undertow.server.HttpServerExchange})) (.duplicate ~body-sym)))))]
      (eval
        (case mode
          :raw `(let [~@(apply concat @lets)]
@@ -54,7 +53,5 @@
                   (fn [~'_]
                     ~@(if (seq code)
                         `[(reify ResponseSender
-                            ;; protocols don't support type hints
-                            (send-response [_ ~exchange']
-                              (let [~exchange ~(with-meta exchange' {:tag 'io.undertow.server.HttpServerExchange})]
-                                ~@code)))]))))))))
+                            (send-response [_ ~exchange]
+                              ~@code))]))))))))
