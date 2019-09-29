@@ -12,7 +12,7 @@ Fast & Non-blocking Clojure wrapper for [Undertow](http://undertow.io/).
 (require '[pohjavirta.server :as server])
 (require '[jsonista.core :as j])
 
-(defn json-handler [_]
+(defn handler [_]
   {:status 200
    :headers {"Content-Type" "application/json"}
    :body (j/write-value-as-bytes {:message "hello"})})
