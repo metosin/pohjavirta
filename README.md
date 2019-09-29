@@ -37,17 +37,25 @@ Hello, World!
 Let's run some load with [wrk](https://github.com/wg/wrk):
 
 ```bash
-$ wrk -t16 -c16 -d2s http://127.0.0.1:8080
+$ wrk -t2 -c16 -d10s http://127.0.0.1:8080
+  Running 10s test @ http://127.0.0.1:8080
+    2 threads and 16 connections
+    Thread Stats   Avg      Stdev     Max   +/- Stdev
+      Latency   104.62us   22.88us   1.65ms   89.68%
+      Req/Sec    71.66k     3.28k   75.82k    86.14%
+    1439599 requests in 10.10s, 183.97MB read
+  Requests/sec: 142537.83
+  Transfer/sec:     18.22MB
 
-Running 2s test @ http://127.0.0.1:8080
-  16 threads and 16 connections
+$ wrk -t2 -c16 -d10s http://127.0.0.1:8080
+Running 10s test @ http://127.0.0.1:8080
+  2 threads and 16 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency   125.96us   37.69us   1.61ms   94.95%
-    Req/Sec     7.82k   530.24     8.55k    83.63%
-  261483 requests in 2.10s, 32.42MB read
-
-Requests/sec: 124548.75
-Transfer/sec:     15.44MB
+    Latency   103.11us   24.27us   2.24ms   92.39%
+    Req/Sec    72.75k     3.21k   76.72k    79.50%
+  1447151 requests in 10.00s, 184.93MB read
+Requests/sec: 144712.05
+Transfer/sec:     18.49MB
 ```
 
 Async responses, using [promesa](http://funcool.github.io/promesa/latest/):
