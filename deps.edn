@@ -32,4 +32,4 @@
                              "-Dvertx.disableContextTimings=true"
                              "-Dvertx.disableTCCL=true"
                              "-Dclojure.compiler.direct-linking=true"]}}
- :deps {io.undertow/undertow-core {:mvn/version "2.0.22.Final"}}}
+ :deps {io.undertow/undertow-core {:mvn/version "2.0.26.Final"}}}
