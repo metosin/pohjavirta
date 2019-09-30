@@ -3,25 +3,12 @@
             [clojure.string :as str]
             [pohjavirta.ring :as ring])
   (:import (java.util HashMap Collections Map Map$Entry)
-           (io.undertow.util Methods HttpString HeaderValues HeaderMap Headers)
+           (io.undertow.util HttpString HeaderValues HeaderMap Headers)
            (java.lang.reflect Field)
            (io.undertow.server HttpServerExchange)
            (clojure.lang MapEquivalence IPersistentMap Counted IPersistentCollection IPersistentVector ILookup IFn IObj Seqable Reversible SeqIterator Associative IHashEq MapEntry)))
 
 (set! *warn-on-reflection* true)
-
-(def ^Map request-methods
-  (let [methods (HashMap.)]
-    (doseq [^String m (->> Methods
-                           .getDeclaredFields
-                           (filter #(= HttpString (.getType ^Field %)))
-                           (map #(.getName ^Field %)))]
-      (.put methods (HttpString. m) (-> m .toLowerCase keyword)))
-    (Collections/unmodifiableMap methods)))
-
-(defn ->method [^HttpString method-http-string]
-  (or (.get request-methods method-http-string)
-      (-> method-http-string .toString .toLowerCase)))
 
 (def ^Map request-headers
   (let [headers (HashMap.)]
@@ -211,7 +198,9 @@
   rest of the keys are handled via [[ZeroCopyRequest]]."
   [^HttpServerExchange exchange]
   (->PartialCopyRequest
+    ;; eager copy
     (->Request
       (.getRequestURI exchange)
       (-> exchange .getRequestMethod .toString .toLowerCase keyword))
+    ;; realize on access
     (->ZeroCopyRequest exchange)))

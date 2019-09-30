@@ -1,6 +1,5 @@
 (ns pohjavirta.server-test
   (:require [clojure.test :refer :all]
-            [pohjavirta.util :as pu]
             [pohjavirta.server :as server]
             [pohjavirta.response :as response]
             [pohjavirta.exchange :as exchange]
