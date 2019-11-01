@@ -2,6 +2,8 @@
 
 Fast & Non-blocking Clojure wrapper for [Undertow](http://undertow.io/).
 
+**STATUS:** Pre-alpha, in design and prototyping phase.
+
 <a href="https://www.techempower.com/benchmarks/#section=test&runid=42f65a64-69b2-400d-b24e-20ecec9848bc&hw=ph&test=json"><img src="docs/img/tfb_json.png"></a>
 
 ## Latest version
