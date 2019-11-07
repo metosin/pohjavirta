@@ -1,9 +1,14 @@
 (ns pohjavirta.response
-  (:import (io.undertow.server HttpServerExchange)
+  (:require [clojure.java.io :as io])
+  (:import (io.undertow.io IoCallback)
+           (io.undertow.server HttpServerExchange)
            (io.undertow.util HeaderMap HttpString SameThreadExecutor)
+           (java.io File InputStream)
            (java.nio ByteBuffer)
-           (java.util.concurrent CompletionStage)
+           (java.nio.channels FileChannel)
+           (java.nio.file OpenOption)
            (java.util Iterator Map$Entry)
+           (java.util.concurrent CompletionStage)
            (java.util.function Function)))
 
 (set! *warn-on-reflection* true)
@@ -96,6 +101,22 @@
     (-> ^HttpServerExchange exchange
         (.getResponseSender)
         (.send ^ByteBuffer body)))
+
+  InputStream
+  (send-body [stream ^HttpServerExchange exchange]
+    (if (.isInIoThread exchange)
+      (.dispatch exchange ^Runnable (fn []
+                                      (.startBlocking exchange)
+                                      (send-body stream exchange)
+                                      (.endExchange exchange)))
+      (with-open [stream stream]
+        (io/copy stream (.getOutputStream exchange)))))
+
+  File
+  (send-body [file exchange]
+    (.transferFrom (.getResponseSender ^HttpServerExchange exchange)
+                   (FileChannel/open (.toPath file) (into-array OpenOption []))
+                   IoCallback/END_EXCHANGE))
 
   Object
   (send-body [body _]
