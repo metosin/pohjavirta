@@ -4,7 +4,8 @@
             [pohjavirta.response :as response]
             [pohjavirta.exchange :as exchange]
             [pohjavirta.async :as a]
-            [hikari-cp.core :as hikari])
+            [hikari-cp.core :as hikari]
+            [ring.adapter.jetty :as jetty])
   (:import (java.nio ByteBuffer)
            (java.util.concurrent CompletableFuture)
            (io.undertow.server HttpHandler HttpServerExchange)
@@ -193,4 +194,6 @@
   (def server (server/create #'handler))
   (def server (server/create http-handler))
   (server/start server)
-  (server/stop server))
+  (server/stop server)
+
+  (jetty/run-jetty #'handler {:port 8088, :join? false}))
