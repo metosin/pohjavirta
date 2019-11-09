@@ -113,10 +113,23 @@
         (io/copy stream (.getOutputStream exchange)))))
 
   File
-  (send-body [file exchange]
-    (.transferFrom (.getResponseSender ^HttpServerExchange exchange)
-                   (FileChannel/open (.toPath file) (into-array OpenOption []))
-                   IoCallback/END_EXCHANGE))
+  (send-body [file ^HttpServerExchange exchange]
+    (if (.isInIoThread exchange)
+      (.dispatch exchange ^Runnable (fn [] (send-body file exchange)))
+      (let [channel ^FileChannel (FileChannel/open (.toPath file) (into-array OpenOption []))
+            sender (.getResponseSender exchange)]
+        (.transferFrom
+          sender
+          channel
+          ^IoCallback
+          (reify
+            IoCallback
+            (onComplete [_ _ _]
+              (.close channel)
+              (.endExchange exchange))
+            (onException [_ _ _ exception]
+              (.close channel)
+              (.onException IoCallback/END_EXCHANGE exchange sender ^Exception exception)))))))
 
   Object
   (send-body [body _]
