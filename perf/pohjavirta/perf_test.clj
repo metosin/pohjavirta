@@ -1,6 +1,5 @@
 (ns pohjavirta.perf-test
   (:require [criterium.core :as cc]
-            [pohjavirta.server :as server]
             [pohjavirta.response :as response]
             [pohjavirta.ring :as ring]
             [pohjavirta.request :as request])

@@ -106,10 +106,10 @@
   (send-body [stream ^HttpServerExchange exchange]
     (if (.isInIoThread exchange)
       (.dispatch exchange ^Runnable (fn []
-                                      (.startBlocking exchange)
                                       (send-body stream exchange)
                                       (.endExchange exchange)))
       (with-open [stream stream]
+        (.startBlocking exchange)
         (io/copy stream (.getOutputStream exchange)))))
 
   File
