@@ -7,7 +7,7 @@
            (java.nio ByteBuffer)
            (java.nio.channels FileChannel)
            (java.nio.file OpenOption)
-           (java.util Iterator Map$Entry)
+           (java.util Iterator Map$Entry Collection)
            (java.util.concurrent CompletionStage)
            (java.util.function Function)))
 
@@ -37,8 +37,11 @@
           i ^Iterator (.iterator ^Iterable headers)]
       (loop []
         (if (.hasNext i)
-          (let [e ^Map$Entry (.next i)]
-            (.put responseHeaders (HttpString/tryFromString ^String (.getKey e)) ^String (.getValue e))
+          (let [e ^Map$Entry (.next i)
+                v (.getValue e)]
+            (if (coll? v)
+              (.putAll responseHeaders (HttpString/tryFromString ^String (.getKey e)) ^Collection v)
+              (.put responseHeaders (HttpString/tryFromString ^String (.getKey e)) ^String v))
             (recur))))))
   (send-body (:body response) exchange))
 
