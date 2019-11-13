@@ -106,11 +106,11 @@
   (send-body [stream ^HttpServerExchange exchange]
     (if (.isInIoThread exchange)
       (.dispatch exchange ^Runnable (fn []
-                                      (send-body stream exchange)
-                                      (.endExchange exchange)))
+                                      (send-body stream exchange)))
       (with-open [stream stream]
         (.startBlocking exchange)
-        (io/copy stream (.getOutputStream exchange)))))
+        (io/copy stream (.getOutputStream exchange))
+        (.endExchange exchange))))
 
   File
   (send-body [file ^HttpServerExchange exchange]
@@ -137,4 +137,5 @@
     (throw (UnsupportedOperationException. (str "Body class not supported: " (class body)))))
 
   nil
-  (send-body [_ _]))
+  (send-body [_ ^HttpServerExchange exchange]
+    (.endExchange exchange)))
