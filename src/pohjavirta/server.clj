@@ -19,15 +19,22 @@
    ;; server-options, socket-options, worker-options
    ;; :dispatch?, virtual-host, virtual-host
    ;; ::ssl-port :keystore, :key-password, :truststore :trust-password, :ssl-context, :key-managers, :trust-managers, :client-auth, :http2?
-   (let [{:keys [port host buffer-size io-threads worker-threads direct-buffers]} (merge default-options options)
+   (let [{:keys [port host buffer-size io-threads worker-threads direct-buffers dispatch]} (merge default-options options)
          handler (cond
                    (instance? HttpHandler handler) handler
                    (and (var? handler) (instance? HttpHandler @handler)) @handler
                    :else (reify HttpHandler
                            (handleRequest [_ exchange]
-                             (let [request (request/create exchange)
-                                   response (handler request)]
-                               (response/send-response response exchange)))))]
+                             (if dispatch
+                               (.dispatch exchange
+                                          ^Runnable (fn []
+                                                      (.startBlocking exchange)
+                                                      (let [request (request/create exchange)
+                                                            response (handler request)]
+                                                        (response/send-response response exchange))))
+                               (let [request (request/create exchange)
+                                     response (handler request)]
+                                 (response/send-response response exchange))))))]
      (-> (Undertow/builder)
          (.addHttpListener port host)
          (cond-> buffer-size (.setBufferSize buffer-size))
