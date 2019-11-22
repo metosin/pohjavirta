@@ -1,199 +1,170 @@
 (ns pohjavirta.server-test
-  (:require [clojure.test :refer :all]
+  (:require [clj-http.client :as http]
+            [clojure.test :refer [use-fixtures deftest is]]
             [pohjavirta.server :as server]
-            [pohjavirta.response :as response]
-            [pohjavirta.exchange :as exchange]
             [pohjavirta.async :as a]
-            [hikari-cp.core :as hikari]
-            [ring.adapter.jetty :as jetty])
-  (:import (java.nio ByteBuffer)
-           (java.util.concurrent CompletableFuture)
-           (io.undertow.server HttpHandler HttpServerExchange)
-           (io.undertow.util Headers)
-           (java.util.concurrent ThreadLocalRandom)
-           (java.util.function Function Supplier)
-           (clojure.lang IDeref)))
+            [ring.middleware.params :as params]
+            [reitit.ring :as ring]
+            [reitit.coercion.spec]
+            [reitit.ring.coercion :as rrc]
+            [reitit.ring.middleware.muuntaja :as muuntaja])
+  (:import [java.io File FileOutputStream FileInputStream]
+           (java.nio.file Files)
+           (java.nio ByteBuffer)
+           (java.util.concurrent CompletableFuture)))
 
-(set! *warn-on-reflection* true)
+;;;
+;;; Utils
+;;;
+(defn- string-80k []
+  (apply str (map char
+                  (take (* 8 1024)
+                        (apply concat (repeat (range (int \a) (int \z))))))))
 
-(def http-handler
-  (let [bytes (.getBytes "Hello, World!")
-        buffer (-> bytes count ByteBuffer/allocateDirect (.put bytes) .flip)]
-    (reify HttpHandler
-      (handleRequest [_ exchange]
-        (-> exchange
-            (.getResponseHeaders)
-            (.put Headers/CONTENT_TYPE "text/plain"))
-        (-> exchange
-            (.getResponseSender)
-            (.send (.duplicate ^ByteBuffer buffer)))))))
+;; [a..z]+
+(def const-string
+  (let [tmp (string-80k)]
+    (apply str (repeat 1024 tmp))))
 
-(defn handler [_]
+(defn ^File gen-tempfile
+  "generate a tempfile, the file will be deleted before jvm shutdown"
+  ([size extension]
+   (let [tmp (doto
+                 (File/createTempFile "tmp_" extension)
+               (.deleteOnExit))]
+     (with-open [w (FileOutputStream. tmp)]
+       (.write w ^bytes (.getBytes (subs const-string 0 size))))
+     tmp)))
+
+(defn to-int [^String int-str] (Integer/valueOf int-str))
+
+;;;
+;;; Handlers
+;;;
+
+(defn file-handler [{{{:keys [length]} :query} :parameters}]
   {:status 200
-   :headers {"Content-Type" "text/plain"}
-   :body "hello World!"})
+   :body (gen-tempfile length ".txt")})
 
-(defn handler [_]
-  (response/->Response 200 {"Content-Type" "text/plain"} "hello World?"))
-
-(defn handler [_]
-  (let [f (CompletableFuture.)]
-    (future (.complete f {:status 200
-                          :headers {"Content-Type" "text/plain"}
-                          :body "hello Future!"}))
-    f))
-
-(require '[promesa.core :as p])
-(require '[porsas.async :as pa])
-(require '[porsas.core :as ps])
-(require '[jsonista.core :as j])
-
-(def async-pool
-  (pa/pool
-    {:uri "postgresql://localhost:5432/hello_world"
-     :user "benchmarkdbuser"
-     :password "benchmarkdbpass"
-     :size (* 2 (.availableProcessors (Runtime/getRuntime)))}))
-
-(def async-mapper (pa/data-mapper {:row (pa/rs->compiled-record)}))
-
-(def jdbc-pool
-  (hikari/make-datasource
-    {:jdbc-url "jdbc:postgresql://localhost:5432/hello_world"
-     :username "benchmarkdbuser"
-     :password "benchmarkdbpass"
-     :maximum-pool-size 256}))
-
-(def jdbc-mapper (ps/data-mapper {:row (ps/rs->compiled-record)}))
-
-(defn random []
-  (unchecked-inc (.nextInt (ThreadLocalRandom/current) 10000)))
-
-(defn sync-db-handler [_]
-  (let [world (with-open [con (ps/get-connection jdbc-pool)]
-                (ps/query-one jdbc-mapper con ["SELECT id, randomnumber from WORLD where id=?" (random)]))]
+(defn inputstream-handler [{{{:keys [length]} :query} :parameters}]
+  (let [file (gen-tempfile length ".txt")]
     {:status 200
-     :headers {"Content-Type" "application/json"}
-     :body (j/write-value-as-bytes world)}))
+     :body (FileInputStream. file)}))
 
-(def http-handler
-  (reify HttpHandler
-    (handleRequest [_ exchange]
-      #_(.startBlocking exchange)
-      (.dispatch
-        ^HttpServerExchange exchange
-        ^Runnable (^:once fn* []
-                    (let [world (with-open [con (ps/get-connection jdbc-pool)]
-                                  (ps/query-one jdbc-mapper con ["SELECT id, randomnumber from WORLD where id=?" (random)]))]
-                      (response/send-response
-                        {:status 200
-                         :headers {"Content-Type" "application/json"}
-                         :body (j/write-value-as-bytes world)}
-                        exchange)))))))
+(defn bytearray-handler [{{{:keys [length]} :query} :parameters}]
+  (let [file (gen-tempfile length ".txt")]
+    {:status 200
+     :body (Files/readAllBytes (.toPath file))}))
 
-(def http-handler
-  (reify HttpHandler
-    (handleRequest [_ exchange]
-      #_(.startBlocking exchange)
-      (.dispatch
-        ^HttpServerExchange exchange
-        ;SameThreadExecutor/INSTANCE
-        ^Runnable (^:once fn* []
-                    (-> (pa/query-one async-mapper async-pool ["SELECT id, randomnumber from WORLD where id=$1" (random)])
-                        (pa/then (fn [world]
-                                   {:status 200
-                                    :headers {"Content-Type" "application/json"}
-                                    :body (j/write-value-as-bytes world)}))))))))
+(defn many-headers-handler [req]
+  (let [count (or (-> req :params :count to-int) 20)]
+    {:status 200
+     :headers (assoc
+               (into {} (map (fn [idx]
+                               [(str "key-" idx) (str "value-" idx)])
+                             (range 0 (inc count))))
+               "x-header-1" ["abc" "def"])}))
 
-(def http-handler
-  (reify HttpHandler
-    (handleRequest [_ exchange]
-      (-> (pa/query-one async-mapper async-pool ["SELECT id, randomnumber from WORLD where id=$1" (random)])
-          (pa/then (fn [world]
-                     (response/send-response
-                       {:status 200
-                        :headers {"Content-Type" "application/json"}
-                        :body (j/write-value-as-bytes world)}
-                       exchange)
-                     (.endExchange ^HttpServerExchange exchange)))))))
+(defn multipart-handler [req]
+  (let [{:keys [title file]} (:params req)]
+    {:status 200
+     :body (str title ": " (:size file))}))
 
-(defn handler [_]
-  (-> (a/promise "Hello, Async?")
+(defn promise-handler [_]
+  (-> (a/promise "Hello, Async!")
       (a/then (fn [response]
-                {:status 200,
+                {:status 200
                  :headers {"Content-Type" "text/plain"}
                  :body response}))))
 
-(defn handler [_]
-  (let [cf (CompletableFuture.)]
-    (.complete cf "Hello, Async?")
-    (.thenApply cf (reify Function
-                     (apply [_ response]
-                       {:status 200,
-                        :headers {"Content-Type" "text/plain"}
-                        :body response})))))
-
-(defn handler [_]
-  (-> (p/promise "Hello, Async!")
-      (p/then (fn [message]
-                {:status 200,
-                 :headers {"Content-Type" "text/plain"}
-                 :body message}))))
-
-(defn handler [_]
-  (-> (a/promise "Hello, Async!")
-      (a/then (fn [message]
-                {:status 200,
-                 :headers {"Content-Type" "text/plain"}
-                 :body message}))))
-
-(defn handler2 [_]
-  (-> (pa/query-one async-mapper async-pool ["SELECT id, randomnumber from WORLD where id=$1" (random)])
-      (.thenApply (reify Function
-                    (apply [_ world]
-                      {:status 200
-                       :headers {"Content-Type" "application/json"}
-                       :body (j/write-value-as-bytes world)})))))
-
-(defmacro thread-local [& body]
-  `(let [tl# (ThreadLocal/withInitial
-               (reify Supplier
-                 (get [_] ~@body)))]
-     (reify IDeref
-       (deref [_] (.get tl#)))))
-
-(def async-pool-provider
-  (thread-local
-    (println "create in:" (Thread/currentThread))
-    (pa/pool
-      {:uri "postgresql://localhost:5432/hello_world"
-       :user "benchmarkdbuser"
-       :password "benchmarkdbpass"
-       :size 1})))
-
-(defn handler [_]
-  (-> (pa/query-one async-mapper @async-pool-provider #_async-pool ["SELECT id, randomnumber from WORLD where id=$1" (random)])
-      (pa/then (fn [world]
-                 {:status 200
-                  :headers {"Content-Type" "application/json"}
-                  :body (j/write-value-as-bytes world)}))
-      (pa/catch (fn [e]
-                  {:status 500
-                   :headers {"Content-Type" "text/plain"}
-                   :body (ex-message e)}))))
-
-(defn handler2 [_]
+(defn many-headers-handler [{{{:keys [count]} :query} :parameters}]
   {:status 200
-   :headers {"Content-Type" "text/plain"}
-   :body "hello World!"})
+   :headers (assoc
+             (into {} (map (fn [idx]
+                             [(str "key-" idx) (str "value-" idx)])
+                           (range 0 (inc count))))
+             "x-header-1" ["abc" "def"])
+   :body nil})
 
-(def handler (exchange/dispatch sync-db-handler))
-(def handler (exchange/constantly handler2))
+(def app
+  (ring/ring-handler
+   (ring/router
+    [["/file" {:get {:parameters {:query {:length int?}}
+                     :handler    file-handler}}]
+     ["/inputstream" {:get {:parameters {:query {:length int?}}
+                            :handler    inputstream-handler}}]
+     ["/bytearray" {:get {:parameters {:query {:length int?}}
+                          :handler    bytearray-handler}}]
+     ["/iseq" (fn [_req] {:status 200
+                         :headers {"Content-Type" "text/plain"}
+                         :body (map str (range 1 10))})]
+     ["/string" (fn [_req] {:status  200
+                           :headers {"Content-Type" "text/plain"}
+                           :body    "Hello World"})]
+     ["/promise" promise-handler]
+     ["/headers" {:get {:parameters {:query {:count int?}}
+                        :handler    many-headers-handler}}]
+     ["/nil-body" (fn [_] {:status 200})]]
+    {:data {:coercion   reitit.coercion.spec/coercion
+            :middleware [params/wrap-params
+                         muuntaja/format-request-middleware
+                         rrc/coerce-exceptions-middleware
+                         rrc/coerce-request-middleware
+                         rrc/coerce-response-middleware]}})))
 
-(comment
-  (def server (server/create #'handler))
-  (def server (server/create http-handler))
-  (server/start server)
-  (server/stop server)
+;;;
+;;; Tests
+;;;
 
-  (jetty/run-jetty #'handler {:port 8088, :join? false}))
+(use-fixtures :once (fn [f]
+                      (let [server (server/create #'app {:port 2040})]
+                        (server/start server)
+                        (try (f) (finally (server/stop server))))))
+
+
+(deftest test-body-file
+  (doseq [length (range 1 (* 1024 1024 8) 1439987)]
+    (let [resp (http/get (str "http://localhost:2040/file?length=" length))]
+      (is (= (:status resp) 200))
+      (is (= length (count (:body resp)))))))
+
+(deftest test-body-string
+  (let [resp (http/get "http://localhost:2040/string")]
+    (is (= (:status resp) 200))
+    (is (= (:body resp) "Hello World"))))
+
+(deftest test-body-inputstream
+  (doseq [length (range 1 (* 1024 1024 5) 1439987)] ; max 5m, many files
+    (let [uri (str "http://localhost:2040/inputstream?length=" length)
+          resp (http/get uri)]
+      (is (= (:status resp) 200))
+      (is (= length (count (:body resp)))))))
+
+(deftest test-body-bytearray
+  (doseq [length (range 1 (* 1024 1024 5) 1439987)] ; max 5m, many files
+    (let [uri (str "http://localhost:2040/bytearray?length=" length)
+          resp (http/get uri)]
+      (is (= (:status resp) 200))
+      (is (= length (count (:body resp)))))))
+
+(deftest test-promise-response
+  (let [resp (http/get "http://localhost:2040/promise")]
+    (is (= (:status resp) 200))
+    (is (= (:body resp) "Hello, Async!"))))
+
+#_(deftest test-body-iseq
+  (let [resp (http/get "http://localhost:2040/iseq")]
+    (is (= (:status resp) 200))
+    (is (= (get-in resp [:headers "content-type"]) "text/plain"))
+    (is (= (:body resp) (apply str (range 1 10))))))
+
+(deftest test-many-headers
+  (doseq [c (range 5 40)]
+    (let [resp (http/get (str "http://localhost:2040/headers?count=" c))]
+      (is (= (:status resp) 200))
+      (is (= (get-in resp [:headers (str "key-" c)]) (str "value-" c))))))
+
+(deftest test-nil-body
+  (let [resp (http/get "http://localhost:2040/nil-body")]
+    (is (= (:status resp) 200))
+    (is (= "" (:body resp)))))

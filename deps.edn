@@ -1,7 +1,20 @@
 {:paths ["src" "resources" "target"]
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-554"}
-                               org.clojure/clojure {:mvn/version "1.10.1"}}}
+                               org.clojure/clojure {:mvn/version "1.10.1"}
+                               clj-http {:mvn/version "3.10.0"}
+                               metosin/reitit {:mvn/version "0.3.10"}
+                               ring {:mvn/version "1.8.0"}}}
+           :repl {:extra-deps  {cider/cider-nrepl {:mvn/version "0.21.1"}
+                                com.clojure-goes-fast/clj-memory-meter {:mvn/version "0.1.2"}
+                                fipp {:mvn/version "0.6.19"}}
+                  :extra-paths ["dev-src/backend" "dev-resources"]
+                  :main-opts   ["-m" "nrepl.cmdline"
+                                "--middleware" "[cider.nrepl/cider-middleware]"
+                                "--bind" "127.0.0.1"
+                                "--interactive"
+                                "--color"]}
+
            :jar {:extra-deps {pack/pack.alpha
                               {:git/url "https://github.com/juxt/pack.alpha.git"
                                :sha "042c61410b1851957ae5f77cfe26a255837172cc"}}
