@@ -1,7 +1,12 @@
-{:paths ["src" "resources" "target"]
+{:paths ["src" "resources" "target/classes"]
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-554"}
-                               org.clojure/clojure {:mvn/version "1.10.1"}}}
+                               org.clojure/clojure {:mvn/version "1.10.1"}
+                               hikari-cp {:mvn/version "2.9.0"}
+                               funcool/promesa {:mvn/version "4.0.2"}
+                               metosin/jsonista {:mvn/version "0.2.5"}
+                               metosin/porsas {:mvn/version "0.0.1-alpha12"}
+                               ring {:mvn/version "1.7.1"}}}
            :jar {:extra-deps {pack/pack.alpha
                               {:git/url "https://github.com/juxt/pack.alpha.git"
                                :sha "042c61410b1851957ae5f77cfe26a255837172cc"}}
