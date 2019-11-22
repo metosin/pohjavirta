@@ -77,6 +77,15 @@
                  :headers {"Content-Type" "text/plain"}
                  :body response}))))
 
+(defn many-headers-handler [{{{:keys [count]} :query} :parameters}]
+  {:status 200
+   :headers (assoc
+             (into {} (map (fn [idx]
+                             [(str "key-" idx) (str "value-" idx)])
+                           (range 0 (inc count))))
+             "x-header-1" ["abc" "def"])
+   :body nil})
+
 (def app
   (ring/ring-handler
    (ring/router
@@ -92,7 +101,9 @@
      ["/string" (fn [_req] {:status  200
                            :headers {"Content-Type" "text/plain"}
                            :body    "Hello World"})]
-     ["/promise" promise-handler]]
+     ["/promise" promise-handler]
+     ["/headers" {:get {:parameters {:query {:count int?}}
+                        :handler    many-headers-handler}}]]
     {:data {:coercion   reitit.coercion.spec/coercion
             :middleware [params/wrap-params
                          muuntaja/format-request-middleware
@@ -145,3 +156,9 @@
     (is (= (:status resp) 200))
     (is (= (get-in resp [:headers "content-type"]) "text/plain"))
     (is (= (:body resp) (apply str (range 1 10))))))
+
+(deftest test-many-headers
+  (doseq [c (range 5 40)]
+    (let [resp (http/get (str "http://localhost:2040/headers?count=" c))]
+      (is (= (:status resp) 200))
+      (is (= (get-in resp [:headers (str "key-" c)]) (str "value-" c))))))
