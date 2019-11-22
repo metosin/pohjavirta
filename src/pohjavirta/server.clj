@@ -23,18 +23,19 @@
          handler (cond
                    (instance? HttpHandler handler) handler
                    (and (var? handler) (instance? HttpHandler @handler)) @handler
+                   dispatch (reify HttpHandler
+                              (handleRequest [_ exchange]
+                                (.dispatch exchange
+                                           ^Runnable (fn []
+                                                       (.startBlocking exchange)
+                                                       (let [request (request/create exchange)
+                                                             response (handler request)]
+                                                         (response/send-response response exchange))))))
                    :else (reify HttpHandler
                            (handleRequest [_ exchange]
-                             (if dispatch
-                               (.dispatch exchange
-                                          ^Runnable (fn []
-                                                      (.startBlocking exchange)
-                                                      (let [request (request/create exchange)
-                                                            response (handler request)]
-                                                        (response/send-response response exchange))))
-                               (let [request (request/create exchange)
-                                     response (handler request)]
-                                 (response/send-response response exchange))))))]
+                             (let [request (request/create exchange)
+                                   response (handler request)]
+                               (response/send-response response exchange)))))]
      (-> (Undertow/builder)
          (.addHttpListener port host)
          (cond-> buffer-size (.setBufferSize buffer-size))
