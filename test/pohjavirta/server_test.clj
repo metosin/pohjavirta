@@ -103,7 +103,8 @@
                            :body    "Hello World"})]
      ["/promise" promise-handler]
      ["/headers" {:get {:parameters {:query {:count int?}}
-                        :handler    many-headers-handler}}]]
+                        :handler    many-headers-handler}}]
+     ["/nil-body" (fn [_] {:status 200})]]
     {:data {:coercion   reitit.coercion.spec/coercion
             :middleware [params/wrap-params
                          muuntaja/format-request-middleware
@@ -162,3 +163,8 @@
     (let [resp (http/get (str "http://localhost:2040/headers?count=" c))]
       (is (= (:status resp) 200))
       (is (= (get-in resp [:headers (str "key-" c)]) (str "value-" c))))))
+
+(deftest test-nil-body
+  (let [resp (http/get "http://localhost:2040/nil-body")]
+    (is (= (:status resp) 200))
+    (is (= "" (:body resp)))))
