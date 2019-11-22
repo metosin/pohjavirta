@@ -192,7 +192,7 @@
 ;; public api
 ;;
 
-(defn create 
+(defn create
   "Creates a partial-copy request where the commonly needed
   keys are copied to an internal [[Request]] Record, while
   rest of the keys are handled via [[ZeroCopyRequest]]."
