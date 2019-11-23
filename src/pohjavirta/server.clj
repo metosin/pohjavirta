@@ -34,8 +34,13 @@
                    :else (reify HttpHandler
                            (handleRequest [_ exchange]
                              (let [request (request/create exchange)
-                                   response (handler request)]
-                               (response/send-response response exchange)))))]
+                                   handler (fn [req]
+                                             (-> req
+                                                 (handler)
+                                                 (response/send-response exchange)))]
+                               (if (fn? (:body request))
+                                 ((:body request) handler request)
+                                 (handler request))))))]
      (-> (Undertow/builder)
          (.addHttpListener port host)
          (cond-> buffer-size (.setBufferSize buffer-size))
