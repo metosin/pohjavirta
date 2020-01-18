@@ -4,7 +4,9 @@
             [pohjavirta.ring :as ring])
   (:import (java.util HashMap Collections Map Map$Entry)
            (io.undertow.util HttpString HeaderValues HeaderMap Headers)
+           (io.undertow.io 	Receiver$FullBytesCallback)
            (java.lang.reflect Field)
+           (java.io ByteArrayInputStream)
            (io.undertow.server HttpServerExchange)
            (clojure.lang MapEquivalence IPersistentMap Counted IPersistentCollection IPersistentVector ILookup IFn IObj Seqable Reversible SeqIterator Associative IHashEq MapEntry)))
 
@@ -43,7 +45,14 @@
   :request-method (-> exchange .getRequestMethod .toString .toLowerCase keyword)
   :protocol (-> exchange .getProtocol .toString)
   :headers (-> exchange .getRequestHeaders ->headers)
-  :body (if (.isBlocking exchange) (.getInputStream exchange))
+  :body (if (.isBlocking exchange)
+          (.getInputStream exchange)
+          (fn [handler request]
+            (-> exchange
+                .getRequestReceiver
+                (.receiveFullBytes (proxy [Receiver$FullBytesCallback] []
+                                     (handle [^HttpServerExchange exchange b-arr]
+                                       (handler (assoc request :body (ByteArrayInputStream. b-arr)))))))))
   :context (.getResolvedPath exchange))
 
 (defprotocol Exchange
