@@ -1,12 +1,10 @@
 (ns pohjavirta.websocket
-  (:import [io.undertow.websockets WebSocketConnectionCallback
-                                   WebSocketProtocolHandshakeHandler]
+  (:import [io.undertow.websockets WebSocketConnectionCallback]
            [io.undertow.websockets.core WebSocketChannel
                                         AbstractReceiveListener
                                         BufferedTextMessage]
-           [io.undertow.server HttpHandler
-                               HttpServerExchange]
-           [io.undertow.websockets.spi WebSocketHttpExchange]))
+           [io.undertow.websockets.spi WebSocketHttpExchange]
+           [io.undertow Handlers]))
 
 ;; this may fit better elsewhere. At first start here though to keep modular
 
@@ -35,7 +33,4 @@
 (defn ws-handler
   "Convenience function to create a basic websocket handler"
   [opts]
-  (let [ws-handshake-handler (WebSocketProtocolHandshakeHandler. ^WebSocketConnectionCallback (ws-callback opts))]
-    (reify HttpHandler
-      (^void handleRequest [_ ^HttpServerExchange exchange]
-        (.handleRequest ws-handshake-handler exchange)))))
+  (Handlers/websocket (ws-callback opts)))

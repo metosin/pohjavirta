@@ -16,7 +16,7 @@
                  :on-receive (fn [{:keys [data]}]
                                (swap! events conj data))
                  :on-close   (fn [_]
-                               (deliver result @events))
+                               (deliver result (swap! events conj :close)))
                  :on-error   (fn [{:keys [error]}]
                                (swap! errors conj error))}
         handler (ws/ws-handler config)
@@ -30,4 +30,5 @@
       (finally
         (server/stop server)))))
 
-(test-websocket)
+(comment
+  (test-websocket))
