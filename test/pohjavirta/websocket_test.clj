@@ -11,9 +11,9 @@
   (let [events  (atom [])
         errors  (atom [])
         result  (promise)
-        config  {:on-connect (fn [_]
+        config  {:on-open    (fn [_]
                                (swap! events conj :open))
-                 :on-receive (fn [{:keys [data]}]
+                 :on-message (fn [{:keys [data]}]
                                (swap! events conj data))
                  :on-close   (fn [_]
                                (deliver result (swap! events conj :close)))
