@@ -13,7 +13,14 @@
 ;; this may fit better elsewhere. At first start here though to keep modular
 
 (defn ws-listener
-  "Default listener"
+  "Default websocket listener
+
+   Takes a map of functions as opts:
+   :on-message | fn taking map of keys :channel, :data
+   :on-close   | fn taking map of keys :channel, :message
+   :on-error   | fn taking map of keys :channel, :error
+
+   Each key defaults to no action"
   [{:keys [on-message on-close on-error]
     :or   {on-message (constantly nil)
            on-close   (constantly nil)
