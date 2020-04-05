@@ -45,7 +45,9 @@
                  :error   error}))))
 
 (defn ws-callback
-  [{:keys [on-open listener] :as ws-opts}]
+  [{:keys [on-open listener]
+    :or   {on-open (constantly nil)}
+    :as   ws-opts}]
   (let [listener (if (instance? ChannelListener listener)
                    listener
                    (ws-listener ws-opts))]
