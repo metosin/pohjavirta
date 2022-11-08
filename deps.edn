@@ -7,13 +7,13 @@
                           slipset/deps-deploy {:mvn/version "0.2.0"}}
                    :ns-default build}
            :graal {:extra-paths ["perf"]
-                   :extra-deps {criterium {:mvn/version "0.4.5"}
+                   :extra-deps {criterium/criterium {:mvn/version "0.4.5"}
                                 funcool/promesa {:mvn/version "5.0.0"}
                                 metosin/reitit {:mvn/version "0.4.2"}
                                 metosin/porsas {:mvn/version "0.0.1-alpha12"}
                                 metosin/jsonista {:mvn/version "0.2.5"}
-                                hikari-cp {:mvn/version "2.10.0"}
-                                ring {:mvn/version "1.8.0"}
+                                hikari-cp/hikari-cp {:mvn/version "2.10.0"}
+                                ring/ring {:mvn/version "1.8.0"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.4.0"}}
                    :jvm-opts ["-server"
                               "-Xms2G"
@@ -26,13 +26,13 @@
                               "-Dvertx.disableTCCL=true"
                               "-Dclojure.compiler.direct-linking=true"]}
            :perf {:extra-paths ["perf"]
-                  :extra-deps {criterium {:mvn/version "0.4.5"}
+                  :extra-deps {criterium/criterium {:mvn/version "0.4.5"}
                                funcool/promesa {:mvn/version "5.0.0"}
                                metosin/reitit {:mvn/version "0.4.2"}
                                metosin/porsas {:mvn/version "0.0.1-alpha12"}
                                metosin/jsonista {:mvn/version "0.2.5"}
-                               hikari-cp {:mvn/version "2.10.0"}
-                               ring {:mvn/version "1.8.0"}
+                               hikari-cp/hikari-cp {:mvn/version "2.10.0"}
+                               ring/ring {:mvn/version "1.8.0"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.4.0"}}
                   :jvm-opts ["-server"
                              "-Xms2G"
