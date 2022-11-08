@@ -3,25 +3,17 @@
                   :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-573"}
                                org.clojure/clojure {:mvn/version "1.10.1"}
                                stylefruits/gniazdo {:mvn/version "1.1.3"}}}
-           :jar {:extra-deps {pack/pack.alpha
-                              {:git/url "https://github.com/juxt/pack.alpha.git"
-                               :sha "60cdf0e75efc988b893eafe726ccdf0d5a5a6067"}}
-                 :main-opts ["-m" "mach.pack.alpha.skinny" "--no-libs"
-                             "--project-path" "pohjavirta.jar"]}
-           :deploy {:extra-deps {deps-deploy {:mvn/version "RELEASE"}}
-                    :main-opts ["-m" "deps-deploy.deps-deploy" "deploy"
-                                "pohjavirta.jar"]}
-           :install {:extra-deps {deps-deploy {:mvn/version "RELEASE"}}
-                     :main-opts ["-m" "deps-deploy.deps-deploy" "install"
-                                 "pohjavirta.jar"]}
+           :build {:deps {io.github.clojure/tools.build {:git/tag "v0.8.4" :git/sha "8c3cd69"}
+                          slipset/deps-deploy {:mvn/version "0.2.0"}}
+                   :ns-default build}
            :graal {:extra-paths ["perf"]
-                   :extra-deps {criterium {:mvn/version "0.4.5"}
+                   :extra-deps {criterium/criterium {:mvn/version "0.4.5"}
                                 funcool/promesa {:mvn/version "5.0.0"}
                                 metosin/reitit {:mvn/version "0.4.2"}
                                 metosin/porsas {:mvn/version "0.0.1-alpha12"}
                                 metosin/jsonista {:mvn/version "0.2.5"}
-                                hikari-cp {:mvn/version "2.10.0"}
-                                ring {:mvn/version "1.8.0"}
+                                hikari-cp/hikari-cp {:mvn/version "2.10.0"}
+                                ring/ring {:mvn/version "1.8.0"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.4.0"}}
                    :jvm-opts ["-server"
                               "-Xms2G"
@@ -34,13 +26,13 @@
                               "-Dvertx.disableTCCL=true"
                               "-Dclojure.compiler.direct-linking=true"]}
            :perf {:extra-paths ["perf"]
-                  :extra-deps {criterium {:mvn/version "0.4.5"}
+                  :extra-deps {criterium/criterium {:mvn/version "0.4.5"}
                                funcool/promesa {:mvn/version "5.0.0"}
                                metosin/reitit {:mvn/version "0.4.2"}
                                metosin/porsas {:mvn/version "0.0.1-alpha12"}
                                metosin/jsonista {:mvn/version "0.2.5"}
-                               hikari-cp {:mvn/version "2.10.0"}
-                               ring {:mvn/version "1.8.0"}
+                               hikari-cp/hikari-cp {:mvn/version "2.10.0"}
+                               ring/ring {:mvn/version "1.8.0"}
                                com.clojure-goes-fast/clj-async-profiler {:mvn/version "0.4.0"}}
                   :jvm-opts ["-server"
                              "-Xms2G"
@@ -53,4 +45,4 @@
                              "-Dvertx.disableContextTimings=true"
                              "-Dvertx.disableTCCL=true"
                              "-Dclojure.compiler.direct-linking=true"]}}
- :deps {io.undertow/undertow-core {:mvn/version "2.0.29.Final"}}}
+ :deps {io.undertow/undertow-core {:mvn/version "2.3.0.Final"}}}
